@@ -1,0 +1,16 @@
+[package]
+name = "reps"
+version = "0.1.0"
+edition = "2024"
+description = "A terminal-based, local-only spaced repetition tool that stores cards in a plain text file."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/gcantieni/reps"
+homepage = "https://github.com/gcantieni/reps"
+readme = "README.md"
+keywords = ["spaced-repetition", "flashcards", "cli", "leitner", "srs"]
+categories = ["command-line-utilities"]
+authors = ["Gus Cantieni <gus.cantieni@gmail.com>"]
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+dirs = "5"
