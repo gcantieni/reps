@@ -5,6 +5,8 @@ use std::path::{Path, PathBuf};
 use chrono::{DateTime, Local, Utc};
 use clap::{Parser, Subcommand};
 use rs_fsrs::{FSRS, Parameters, Rating, State};
+use rustyline::DefaultEditor;
+use rustyline::error::ReadlineError;
 
 const HEADER: &str = "# reps cards. fields: id\\tstate\\tdue\\tlast_review\\tstability\\tdifficulty\\treps\\tlapses\\tfront\\tback\n";
 const NUM_FIELDS: usize = 10;
@@ -141,22 +143,23 @@ fn add_card(path: &Path, cards: &mut Vec<Card>, front: String, back: String) -> 
     Ok(())
 }
 
-/// Returns `None` on end of input.
-fn prompt(label: &str) -> io::Result<Option<String>> {
-    print!("{label}: ");
-    io::stdout().flush()?;
-    let mut line = String::new();
-    if io::stdin().read_line(&mut line)? == 0 {
-        println!();
-        return Ok(None);
+/// Returns `None` on end of input or an interrupt.
+fn prompt(rl: &mut DefaultEditor, label: &str) -> io::Result<Option<String>> {
+    match rl.readline(&format!("{label}: ")) {
+        Ok(line) => Ok(Some(line.trim().to_string())),
+        Err(ReadlineError::Eof | ReadlineError::Interrupted) => {
+            println!();
+            Ok(None)
+        }
+        Err(ReadlineError::Io(e)) => Err(e),
+        Err(e) => Err(io::Error::other(e)),
     }
-    Ok(Some(line.trim().to_string()))
 }
 
 /// Prompts until a non-blank answer; `None` on end of input.
-fn prompt_nonblank(label: &str) -> io::Result<Option<String>> {
+fn prompt_nonblank(rl: &mut DefaultEditor, label: &str) -> io::Result<Option<String>> {
     loop {
-        match prompt(label)? {
+        match prompt(rl, label)? {
             Some(s) if s.is_empty() => continue,
             other => return Ok(other),
         }
@@ -165,10 +168,11 @@ fn prompt_nonblank(label: &str) -> io::Result<Option<String>> {
 
 fn cmd_add(path: &Path, front: Option<String>, back: Option<String>) -> io::Result<()> {
     let mut cards = load(path)?;
+    let mut rl = DefaultEditor::new().map_err(io::Error::other)?;
     if let Some(front) = front {
         let back = match back {
             Some(b) => b,
-            None => match prompt_nonblank("back")? {
+            None => match prompt_nonblank(&mut rl, "back")? {
                 Some(b) => b,
                 None => return Ok(()),
             },
@@ -178,11 +182,11 @@ fn cmd_add(path: &Path, front: Option<String>, back: Option<String>) -> io::Resu
 
     println!("adding cards. leave front blank to finish.");
     loop {
-        let front = match prompt("front")? {
+        let front = match prompt(&mut rl, "front")? {
             Some(f) if !f.is_empty() => f,
             _ => break,
         };
-        let back = match prompt_nonblank("back")? {
+        let back = match prompt_nonblank(&mut rl, "back")? {
             Some(b) => b,
             None => break,
         };
